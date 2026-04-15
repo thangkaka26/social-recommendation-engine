@@ -258,12 +258,13 @@ def home():
         "home.html",
         posts=get_feed(),
         users=get_users(),
-        friends=get_friends()   #ADD THIS
+        friends=get_friends()
     )
 
 @app.route("/friends")
 def friends():
     return render_template("friends.html", friends=get_friends())
+
 
 if __name__ == "__main__":
     app.run(debug=True)
