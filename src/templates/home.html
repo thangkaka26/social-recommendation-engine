@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Social App</title>
+<script src="https://unpkg.com/neovis.js@2.0.2"></script>
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #f0f2f5;
+}
+
+/* NAV */
+.nav {
+  display: flex;
+  background: #1877f2;
+  color: white;
+  padding: 10px;
+}
+
+/* APP CONTAINER */
+#app {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* TABS */
+.tab {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+/* ONLY ACTIVE TAB SHOWS */
+.tab.active {
+  display: block;
+}
+
+/* HOME layout ONLY when active */
+#home.tab.active {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  padding: 20px;
+}
+
+/* FRIENDS layout */
+#friends {
+  padding: 20px;
+}
+
+/* FEED + SIDEBAR */
+.feed {
+  width: 100%;
+}
+
+.sidebar {
+  width: 100%;
+}
+
+/* CARDS */
+.card {
+  border: 1px solid #ccc;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* MODAL */
+.modal {
+  display:none;
+  position:fixed;
+  top:10%;
+  left:10%;
+  width:80%;
+  height:70%;
+  background:white;
+  border:2px solid #333;
+}
+
+#viz {
+  width:100%;
+  height:100%;
+}
+
+.like-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #e4e6eb;   /* gray = not liked */
+  color: black;
+}
+
+/* liked state */
+.like-btn.liked {
+  background: #1877f2;   /* blue */
+  color: white;
+}
+
+/* hover */
+.like-btn:hover {
+  opacity: 0.85;
+}
+
+.explain-btn {
+  margin-left: 10px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border: none;
+  border-radius: 5px;
+  background: #e4e6eb;
+  cursor: pointer;
+}
+
+.explain-btn:hover {
+  background: #d8dadf;
+}
+
+/* POST */
+.post-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.post-topic {
+  font-size: 13px;
+  color: #1877f2;
+  margin-bottom: 6px;
+}
+
+.post-content {
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.post-meta {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+/* USER / FRIEND */
+.user-name {
+  font-size: 18px;   /* bigger */
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.user-info {
+  font-size: 13px;
+  color: #444;
+  margin-bottom: 3px;
+}
+
+.post-author {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+}
+</style>
+
+<script>
+
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach(t => {
+    t.style.display = 'none'        // FORCE HIDE
+    t.classList.remove('active')
+  })
+
+  const activeTab = document.getElementById(tab)
+  activeTab.style.display = (tab === 'home') ? 'grid' : 'block'  // FORCE SHOW
+  activeTab.classList.add('active')
+}
+
+function closeModal(){ document.getElementById('modal').style.display='none' }
+
+function refreshUsers(){
+  fetch('/')
+    .then(res => res.text())
+    .then(html => {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, 'text/html')
+
+      const newUsers = doc.querySelector('#users')
+      const currentUsers = document.querySelector('#users')
+
+      currentUsers.innerHTML = newUsers.innerHTML
+    })
+}
+
+function follow(id, btn){
+  fetch('/follow',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ user_id: parseInt(id) })
+  }).then(()=>{
+    btn.closest('.card').remove()
+
+    refreshFeed()
+    refreshFriends()
+    refreshUsers()   // ADD THIS
+  })
+}
+
+function unfollow(id){
+  fetch('/unfollow',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ user_id: parseInt(id) })
+  }).then(()=>{
+    refreshFriends()
+    refreshUsers()   // ADD THIS
+  })
+}
+
+function toggleLike(id){
+  const btn = document.getElementById(`like-btn-${id}`)
+  const isLiked = btn.classList.contains('liked')
+
+  const url = isLiked ? '/unlike' : '/like'
+
+  fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ post_id: parseInt(id) })
+  }).then(()=>{
+    btn.classList.toggle('liked')
+
+    refreshFeed()   // ADD THIS
+  })
+}
+
+function explainFeed(){
+  document.getElementById('modal').style.display='block'
+
+  let config = {
+    containerId: "viz",
+    serverUrl: "bolt://localhost:7687",
+    serverUser: "neo4j",
+    serverPassword: "password",
+
+    initialCypher: `
+      MATCH (me:User {user_id:0})-[*1..2]->(p:Post)
+      RETURN * LIMIT 30
+    `
+  }
+
+  let viz = new NeoVis.default(config)
+  viz.render()
+}
+
+
+function refreshFeed(){
+  fetch('/')
+    .then(res => res.text())
+    .then(html => {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, 'text/html')
+
+      const newFeed = doc.querySelector('.feed')
+      setTimeout(()=>{
+        document.querySelector('.feed').innerHTML = newFeed.innerHTML
+      }, 50)
+    })
+}
+
+function refreshFriends(){
+  fetch('/')
+    .then(res => res.text())
+    .then(html => {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, 'text/html')
+
+      const newFriends = doc.querySelector('#friends')
+      document.querySelector('#friends').innerHTML = newFriends.innerHTML
+    })
+}
+
+
+function explainUsers(){
+  document.getElementById('modal').style.display='block'
+
+  let config = {
+    containerId: "viz",
+    serverUrl: "bolt://localhost:7687",
+    serverUser: "neo4j",
+    serverPassword: "password",
+
+    initialCypher: `
+      MATCH (me:User {user_id:0})-[*1..2]->(u:User)
+      WHERE u.user_id <> 0
+      RETURN * LIMIT 30
+    `
+  }
+
+  let viz = new NeoVis.default(config)
+  viz.render()
+}
+
+
+</script>
+</head>
+<body>
+
+<div class="nav">
+<button onclick="showTab('home')">Home</button>
+<button onclick="showTab('friends')">Friends</button>
+</div>
+
+<div id="app">
+
+<div id="home" class="tab active">
+
+<div class="feed">
+<h2>
+  News Feed
+  <button onclick="explainFeed()" class="explain-btn">Why?</button>
+</h2>
+{% for p in posts %}
+<div class="card">
+
+<div class="post-title"><b>{{p.title}}</b></div>
+
+<div class="post-author"><b>Author:</b> {{p.author}}</div>
+
+<div class="post-topic"><b>Topic:</b> {{p.topic}}</div>
+
+<div class="post-content">{{p.content}}</div>
+
+<div class="post-meta">
+  <span><b>Created at:</b> {{p.created_at}}</span>
+</div>
+
+<button 
+  id="like-btn-{{p.id}}"
+  onclick="toggleLike('{{p.id}}')"
+  class="like-btn {{ 'liked' if p.liked else '' }}"
+>
+  Like
+</button>
+
+</div>
+{% endfor %}
+</div>
+
+<div class="sidebar" id="users">
+<h2>
+  People you may know
+  <button onclick="explainUsers()" class="explain-btn">Why?</button>
+</h2>
+{% for u in users %}
+<div class="card">
+
+<div class="user-name">{{u.name}}</div>
+
+<div class="user-info"><b>Country:</b> {{u.country}}</div>
+<div class="user-info"><b>Favorite:</b> {{u.favorite}}</div>
+
+<button onclick="follow('{{u.id}}', this)">Follow</button>
+
+</div>
+{% endfor %}
+</div>
+
+</div>
+
+<div id="friends" class="tab">
+<h2>Friends ({{friends|length}})</h2>
+{% for f in friends %}
+<div class="card">
+
+<div class="user-name">{{f.name}}</div>
+
+<div class="user-info"><b>Country:</b> {{f.country}}</div>
+<div class="user-info"><b>Favorite:</b> {{f.favorite}}</div>
+
+<button onclick="unfollow('{{f.id}}')">Unfollow</button>
+
+</div>
+{% endfor %}
+</div>
+</div>
+
+<div id="modal" class="modal">
+<button onclick="closeModal()">Close</button>
+<div id="viz"></div>
+</div>
+
+</body>
+</html>
