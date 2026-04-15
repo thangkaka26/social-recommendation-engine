@@ -2,7 +2,7 @@
 <html>
 <head>
 <title>Social App</title>
-<script src="https://unpkg.com/neovis.js@2.0.2"></script>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <style>
 body {
   font-family: Arial;
@@ -72,19 +72,50 @@ body {
 
 /* MODAL */
 .modal {
-  display:none;
-  position:fixed;
-  top:10%;
-  left:10%;
-  width:80%;
-  height:70%;
-  background:white;
-  border:2px solid #333;
+  display: none;
+  position: fixed;
+
+  top: 5%;        
+  left: 12.5%;      
+
+  width: 80%;     
+  height: 90%;
+
+  background: white;
+  border: 2px solid #333;
+  z-index: 999;
+}
+
+.modal.active {
+  display: flex;      
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  background: #f5f5f5;
+  flex: 0 0 auto; 
+}
+
+.modal-header button {
+  padding: 6px 12px;
+  border: none;
+  background: #1877f2;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 #viz {
-  width:100%;
-  height:100%;
+  flex: 1;             
+  width: 100%;
+  overflow: hidden;   
+  position: relative;
+}
+
+#viz canvas {
+  image-rendering: crisp-edges;   
 }
 
 .like-btn {
@@ -92,13 +123,13 @@ body {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  background: #e4e6eb;
+  background: #e4e6eb; 
   color: black;
 }
 
 /* liked state */
 .like-btn.liked {
-  background: #1877f2;
+  background: #1877f2; 
   color: white;
 }
 
@@ -147,7 +178,7 @@ body {
 
 /* USER / FRIEND */
 .user-name {
-  font-size: 18px;
+  font-size: 18px;  
   font-weight: bold;
   margin-bottom: 6px;
 }
@@ -169,16 +200,18 @@ body {
 
 function showTab(tab){
   document.querySelectorAll('.tab').forEach(t => {
-    t.style.display = 'none'
+    t.style.display = 'none'     
     t.classList.remove('active')
   })
 
   const activeTab = document.getElementById(tab)
-  activeTab.style.display = (tab === 'home') ? 'grid' : 'block'
+  activeTab.style.display = (tab === 'home') ? 'grid' : 'block' 
   activeTab.classList.add('active')
 }
 
-function closeModal(){ document.getElementById('modal').style.display='none' }
+function closeModal(){
+  document.getElementById('modal').classList.remove('active')
+}
 
 function refreshUsers(){
   fetch('/')
@@ -204,7 +237,7 @@ function follow(id, btn){
 
     refreshFeed()
     refreshFriends()
-    refreshUsers() 
+    refreshUsers()  
   })
 }
 
@@ -215,7 +248,7 @@ function unfollow(id){
     body: JSON.stringify({ user_id: parseInt(id) })
   }).then(()=>{
     refreshFriends()
-    refreshUsers()
+    refreshUsers() 
   })
 }
 
@@ -232,27 +265,77 @@ function toggleLike(id){
   }).then(()=>{
     btn.classList.toggle('liked')
 
-    refreshFeed()
+    refreshFeed() 
   })
 }
 
+
 function explainFeed(){
-  document.getElementById('modal').style.display='block'
+  document.getElementById('modal').classList.add('active')
 
-  let config = {
-    containerId: "viz",
-    serverUrl: "bolt://localhost:7687",
-    serverUser: "neo4j",
-    serverPassword: "password",
+  fetch('/graph/feed')
+    .then(res => res.json())
+    .then(data => {
+    const container = document.getElementById('viz')
 
-    initialCypher: `
-      MATCH (me:User {user_id:0})-[*1..2]->(p:Post)
-      RETURN * LIMIT 30
-    `
-  }
+    container.innerHTML = ""
+    container.style.height = "100%" 
+    container.style.width = "100%"   
 
-  let viz = new NeoVis.default(config)
-  viz.render()
+      const nodes = new vis.DataSet(data.nodes)
+      const edges = new vis.DataSet(data.relationships)
+
+      const network = new vis.Network(container, { nodes, edges }, {
+        autoResize: true,
+
+        nodes: {
+          shape: 'dot',
+          size: 16,
+          font: {
+            size: 14,
+            color: '#222',
+            face: 'Segoe UI'  
+          }
+        },
+        edges: {
+          arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+          smooth: true
+        },
+        layout: {
+          improvedLayout: true
+        },
+        physics: {
+          enabled: true,
+          solver: "forceAtlas2Based",
+          stabilization: {
+            iterations: 200,
+            fit: true
+          },
+          barnesHut: {
+            gravitationalConstant: -2000,
+            centralGravity: 0.2,
+            springLength: 100,
+            springConstant: 0.04
+          }
+        },
+        interaction: {
+          zoomView: true,
+          dragView: true
+        },
+        configure: {
+          enabled: false
+        }
+      })
+
+      network.once("stabilizationIterationsDone", function () {
+        network.fit({ animation: true })
+      })
+
+      setTimeout(() => {
+        network.redraw()
+        network.fit()
+      }, 100)
+    })
 }
 
 
@@ -284,23 +367,71 @@ function refreshFriends(){
 
 
 function explainUsers(){
-  document.getElementById('modal').style.display='block'
+  document.getElementById('modal').classList.add('active')
 
-  let config = {
-    containerId: "viz",
-    serverUrl: "bolt://localhost:7687",
-    serverUser: "neo4j",
-    serverPassword: "password",
+  fetch('/graph/users')
+    .then(res => res.json())
+    .then(data => {
+    const container = document.getElementById('viz')
 
-    initialCypher: `
-      MATCH (me:User {user_id:0})-[*1..2]->(u:User)
-      WHERE u.user_id <> 0
-      RETURN * LIMIT 30
-    `
-  }
+    container.innerHTML = ""
+    container.style.height = "100%"  
+    container.style.width = "100%"   
 
-  let viz = new NeoVis.default(config)
-  viz.render()
+      const nodes = new vis.DataSet(data.nodes)
+      const edges = new vis.DataSet(data.relationships)
+
+      const network = new vis.Network(container, { nodes, edges }, {
+        autoResize: true,
+
+        nodes: {
+          shape: 'dot',
+          size: 16,
+          font: {
+            size: 14,
+            color: '#222',
+            face: 'Segoe UI'  
+          }
+        },
+        edges: {
+          arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+          smooth: true
+        },
+        layout: {
+          improvedLayout: true
+        },
+        physics: {
+          enabled: true,
+          solver: "forceAtlas2Based",
+          stabilization: {
+            iterations: 200,
+            fit: true
+          },
+          barnesHut: {
+            gravitationalConstant: -2000,
+            centralGravity: 0.2,
+            springLength: 100,
+            springConstant: 0.04
+          }
+        },
+        interaction: {
+          zoomView: true,
+          dragView: true
+        },
+        configure: {
+          enabled: false
+        }
+      })
+
+      network.once("stabilizationIterationsDone", function () {
+        network.fit({ animation: true })
+      })
+
+      setTimeout(() => {
+        network.redraw()
+        network.fit()
+      }, 100)
+    })
 }
 
 
@@ -388,8 +519,13 @@ function explainUsers(){
 </div>
 
 <div id="modal" class="modal">
-<button onclick="closeModal()">Close</button>
-<div id="viz"></div>
+
+  <div class="modal-header">
+    <button onclick="closeModal()">Close</button>
+  </div>
+
+  <div id="viz"></div>
+
 </div>
 
 </body>
