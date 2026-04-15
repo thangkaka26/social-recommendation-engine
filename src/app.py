@@ -251,6 +251,158 @@ def explain_user(uid):
     result = run_query(query, {"uid1": ROOT_USER_ID, "uid2": uid})
     return jsonify([r.data() for r in result])
 
+@app.route("/graph/feed")
+def graph_feed():
+    query = """
+    MATCH (me:User {user_id:0})
+
+    OPTIONAL MATCH (me)-[:FOLLOWS]->(f:User)
+    WITH me, collect(DISTINCT f) AS friends
+
+    UNWIND friends AS f
+    OPTIONAL MATCH (f)-[:CREATED]->(p:Post)
+
+    RETURN me, f, p
+    LIMIT 30
+    """
+
+    result = run_query(query)
+
+    nodes = {}
+    edges = set()
+
+    for r in result:
+        me = r.get("me")
+        f = r.get("f")
+        p = r.get("p")
+
+        # --- nodes ---
+        if me:
+            nodes[me["user_id"]] = {
+                "id": str(me["user_id"]),
+                "label": me["user_name"],
+                "group": "me"
+            }
+
+        if f:
+            nodes[f["user_id"]] = {
+                "id": str(f["user_id"]),
+                "label": f["user_name"],
+                "group": "user"
+            }
+            edges.add((
+                str(me["user_id"]),
+                str(f["user_id"])
+            ))
+
+        if p:
+            pid = "p" + str(p["post_id"])
+            nodes[pid] = {
+                "id": pid,
+                "label": p["title"],
+                "group": "post"
+            }
+            edges.add((
+                str(f["user_id"]),
+                pid
+            ))
+
+    # ADD THIS BLOCK RIGHT BEFORE RETURN
+    if len(nodes) == 0:
+        nodes["0"] = {
+            "id": "0",
+            "label": "I Hate Neo4j",
+            "group": "me"
+        }
+
+    edges = [
+        {"from": f, "to": t}
+        for (f, t) in edges
+    ]
+
+    return jsonify({
+        "nodes": list(nodes.values()),
+        "relationships": edges
+    })
+
+@app.route("/graph/users")
+def graph_users():
+    query = """
+    MATCH (me:User {user_id:0})
+
+    OPTIONAL MATCH (me)-[:FOLLOWS]->(f:User)
+    WITH me, collect(DISTINCT f) AS friends
+
+    UNWIND friends AS f
+
+    OPTIONAL MATCH (f)-[:FOLLOWS]->(fof:User)
+
+    RETURN me, f, fof
+    LIMIT 30
+    """
+
+    result = run_query(query)
+
+    nodes = {}
+    edges = set()
+
+    for r in result:
+        me = r.get("me")
+        f = r.get("f")
+        fof = r.get("fof")
+
+        # --- nodes ---
+        if me:
+            nodes[me["user_id"]] = {
+                "id": str(me["user_id"]),
+                "label": me["user_name"],
+                "group": "me"
+            }
+
+        if f:
+            nodes[f["user_id"]] = {
+                "id": str(f["user_id"]),
+                "label": f["user_name"],
+                "group": "user"
+            }
+
+            # ALWAYS connect root → friend
+            edges.add((
+                str(me["user_id"]),
+                str(f["user_id"])
+            ))
+
+        if fof:
+            nodes[fof["user_id"]] = {
+                "id": str(fof["user_id"]),
+                "label": fof["user_name"],
+                "group": "user"
+            }
+
+            #  friend → friend-of-friend
+            edges.add((
+                str(f["user_id"]),
+                str(fof["user_id"])
+            ))
+
+    if len(nodes) == 0:
+        nodes["0"] = {
+            "id": "0",
+            "label": "I Hate Neo4j",
+            "group": "me"
+        }
+
+    edges = [
+        {"from": f, "to": t}
+        for (f, t) in edges
+    ]
+
+    return jsonify({
+        "nodes": list(nodes.values()),
+        "relationships": edges
+    })
+
+
 # ---- ROUTES ----
 @app.route("/")
 def home():
@@ -264,7 +416,6 @@ def home():
 @app.route("/friends")
 def friends():
     return render_template("friends.html", friends=get_friends())
-
 
 if __name__ == "__main__":
     app.run(debug=True)
