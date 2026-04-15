@@ -1,0 +1,193 @@
+name,description,query,id,parentId,isFolder
+Generate user data & follows relationship.,,"WITH [
+  {country: 'Vietnam', names: [
+    'Nguyen Van An','Tran Thi Mai','Le Hoang Nam','Pham Quang Huy',
+    'Hoang Minh Duc','Vo Thi Lan','Dang Tuan Kiet','Bui Ngoc Anh',
+    'Do Thanh Son','Phan Thu Trang'
+  ]},
+  {country: 'USA', names: [
+    'John Smith','Emily Johnson','Michael Brown','Sarah Davis',
+    'James Wilson','Olivia Martinez','David Anderson','Sophia Taylor',
+    'Daniel Thomas','Emma White'
+  ]},
+  {country: 'India', names: [
+    'Amit Sharma','Priya Singh','Rahul Verma','Sneha Patel',
+    'Vikram Gupta','Anjali Mehta','Rohit Agarwal','Neha Reddy',
+    'Karan Kapoor','Pooja Nair'
+  ]},
+  {country: 'Russia', names: [
+    'Ivan Ivanov','Olga Petrova','Dmitry Sokolov','Anna Smirnova',
+    'Sergey Volkov','Elena Morozova','Alexey Kuznetsov','Natalia Popova',
+    'Mikhail Lebedev','Irina Kozlova'
+  ]},
+  {country: 'France', names: [
+    'Jean Dupont','Marie Martin','Pierre Durand','Sophie Bernard',
+    'Louis Petit','Camille Robert','Lucas Richard','Emma Dubois',
+    'Hugo Moreau','Chloe Laurent'
+  ]},
+  {country: 'Japan', names: [
+    'Haruto Sato','Yuki Tanaka','Sota Suzuki','Mei Kobayashi',
+    'Yuma Takahashi','Aoi Yamamoto','Kaito Nakamura','Sakura Ito',
+    'Ren Watanabe','Hina Yoshida'
+  ]},
+  {country: 'UK', names: [
+    'Oliver Smith','Harry Brown','George Wilson','Jack Taylor',
+    'Noah Davies','Charlie Evans','Thomas Harris','Oscar Clark',
+    'William Lewis','Henry Walker'
+  ]}
+] AS countries,
+['Sport','Music','Technology','Finance','Travel','Gaming'] AS hobbies
+
+UNWIND range(1,100) AS i
+WITH i, countries, hobbies,
+     countries[i % size(countries)] AS c
+
+CREATE (u:User {
+  user_id: i,
+  user_name: c.names[i % size(c.names)],
+  country: c.country,
+  favorite: hobbies[(i * 7) % size(hobbies)]
+});",0,,false
+Generate post data & created relationship,,"MATCH (u:User)
+WITH collect(u) AS users,
+
+[
+  {topic:'Sport', titles:[
+    'Amazing match last night','Training tips for beginners','Top 10 football moments',
+    'Why teamwork matters in sports','Best exercises for stamina'
+  ], contents:[
+    'Had a great time watching the game, the energy was incredible.',
+    'Consistency and discipline are key to improving performance.',
+    'Sharing some of my favorite highlights from recent matches.',
+    'Team coordination often defines the outcome more than individual skill.',
+    'Building stamina takes time but pays off in the long run.'
+  ]},
+
+  {topic:'Music', titles:[
+    'My favorite songs this week','Learning guitar basics','Why music is powerful',
+    'Top artists to follow','Concert experience review'
+  ], contents:[
+    'Music has been a huge part of my daily routine lately.',
+    'Started learning guitar and it’s both fun and challenging.',
+    'Songs can really influence mood and productivity.',
+    'Here are some artists I think everyone should check out.',
+    'The live concert atmosphere was unforgettable.'
+  ]},
+
+  {topic:'Technology', titles:[
+    'Latest trends in AI','Why coding is important','Tech stack I use',
+    'Future of software engineering','Best tools for developers'
+  ], contents:[
+    'AI is transforming industries at an incredible pace.',
+    'Programming skills open many career opportunities.',
+    'Sharing tools that improved my productivity.',
+    'Software engineering keeps evolving with new paradigms.',
+    'Choosing the right tools can save a lot of time.'
+  ]},
+
+  {topic:'Finance', titles:[
+    'How to save money effectively','Investment strategies','Understanding risk',
+    'Personal finance tips','Stock market basics'
+  ], contents:[
+    'Saving consistently is the foundation of financial stability.',
+    'Diversification helps reduce investment risk.',
+    'Understanding risk tolerance is crucial before investing.',
+    'Managing expenses wisely leads to long-term benefits.',
+    'Learning market basics is essential for beginners.'
+  ]},
+
+  {topic:'Travel', titles:[
+    'My recent trip experience','Top destinations to visit','Travel tips',
+    'Budget travel guide','Cultural experiences abroad'
+  ], contents:[
+    'Traveling opens up new perspectives and experiences.',
+    'Here are some destinations worth visiting this year.',
+    'Planning ahead can make trips smoother.',
+    'Traveling on a budget is possible with the right strategy.',
+    'Experiencing different cultures is enriching.'
+  ]},
+
+  {topic:'Gaming', titles:[
+    'Best games this year','Gaming setup tour','Tips to improve skills',
+    'Multiplayer vs single player','Game review'
+  ], contents:[
+    'This year has been great for gaming releases.',
+    'Sharing my current gaming setup.',
+    'Practice and strategy are key to improving.',
+    'Both multiplayer and solo games have unique advantages.',
+    'Here’s my honest review after hours of gameplay.'
+  ]}
+] AS topics
+
+UNWIND range(1,300) AS i
+WITH i, users, topics,
+     users[i % size(users)] AS author,
+     topics[i % size(topics)] AS t
+
+WITH i, author, t,
+     t.titles[i % size(t.titles)] AS title,
+     t.contents[(i * 3) % size(t.contents)] AS content,
+     datetime() - duration({
+       days: (i % 21),
+       hours: (i * 5) % 24,
+       minutes: (i * 13) % 60
+     }) AS dt
+
+CREATE (p:Post {
+  post_id: i,
+  title: title,
+  content: content,
+  topic: t.topic,
+
+  created_at:
+    right('0' + toString(dt.hour),2) + ':' +
+    right('0' + toString(dt.minute),2) + ' ' +
+    right('0' + toString(dt.day),2) + '/' +
+    right('0' + toString(dt.month),2) + '/' +
+    toString(dt.year)
+})
+
+CREATE (author)-[:CREATED]->(p);",1,,false
+Generate users FOLLOWS relationship,,"MATCH (u:User)
+WITH collect(u) AS users
+
+UNWIND users AS u
+WITH u, users,
+     [x IN users 
+      WHERE x.user_id <> u.user_id 
+        AND (u.user_id + x.user_id) % 5 = 0][0..5] AS targets
+
+UNWIND targets AS t
+MERGE (u)-[:FOLLOWS]->(t);",2,,false
+Generate LIKES relatioship User --> Post,,"MATCH (p:Post)
+WITH collect(p) AS posts, size(collect(p)) AS n
+
+MATCH (u:User)
+WITH u, posts, n
+
+// generate candidate indices (small bounded set, not all posts)
+WITH u, posts, n,
+     [i IN range(0, 14) |  // only 15 candidates max → efficient
+        posts[(u.user_id * 17 + i * 31) % n]
+     ] AS candidates
+
+UNWIND candidates AS p
+
+// pseudo-random filter per (user, post)
+WITH u, p,
+     ( (u.user_id * 13 + p.post_id * 7) % 10 ) AS score
+
+WHERE score < 3   // ~30% chance
+
+// limit max 5 per user
+WITH u, collect(p)[0..5] AS likedPosts
+
+UNWIND likedPosts AS p
+MERGE (u)-[:LIKES]->(p);",3,,false
+Create indexes on User and Post,,"CREATE INDEX user_id_index FOR (u:User) ON (u.user_id);
+CREATE INDEX post_id_index FOR (p:Post) ON (p.post_id);",4,,false
+Create root user,,"MERGE (u:User {user_id: 0})
+SET u.user_name = 'I Hate Neo4j',
+    u.country = 'Vietnam',
+    u.favorite = 'Technology'
+RETURN u;",5,,false
