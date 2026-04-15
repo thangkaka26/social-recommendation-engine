@@ -11,6 +11,7 @@ src/
 │   ├── friends.html
 │   └── home.html
 └── app.py
+└── requirements.txt
 ```
 
 ## Requirements  
