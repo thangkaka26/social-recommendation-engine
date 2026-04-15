@@ -1,23 +1,19 @@
-
-uri = "neo4j://127.0.0.1:7687"
-username = "neo4j"
-passw = "your_password"
-dbname = "your_db"
-
-
 # =========================
 # app.py (Flask Backend)
 # =========================
+import os
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify
 from neo4j import GraphDatabase
 
 app = Flask(__name__)
+load_dotenv("db/.env")
 
 # ---- CONFIG ----
-URI = uri
-USER = username
-PASSWORD = passw
-DATABASE = dbname  # change if needed
+URI = os.getenv("URI")
+USER = os.getenv("USER")
+PASSWORD = os.getenv("PASSWORD")
+DATABASE = os.getenv("DATABASE")
 
 ROOT_USER_ID = 0
 
