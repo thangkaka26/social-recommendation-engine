@@ -92,13 +92,13 @@ body {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  background: #e4e6eb;   /* gray = not liked */
+  background: #e4e6eb;
   color: black;
 }
 
 /* liked state */
 .like-btn.liked {
-  background: #1877f2;   /* blue */
+  background: #1877f2;
   color: white;
 }
 
@@ -147,7 +147,7 @@ body {
 
 /* USER / FRIEND */
 .user-name {
-  font-size: 18px;   /* bigger */
+  font-size: 18px;
   font-weight: bold;
   margin-bottom: 6px;
 }
@@ -169,12 +169,12 @@ body {
 
 function showTab(tab){
   document.querySelectorAll('.tab').forEach(t => {
-    t.style.display = 'none'        // FORCE HIDE
+    t.style.display = 'none'
     t.classList.remove('active')
   })
 
   const activeTab = document.getElementById(tab)
-  activeTab.style.display = (tab === 'home') ? 'grid' : 'block'  // FORCE SHOW
+  activeTab.style.display = (tab === 'home') ? 'grid' : 'block'
   activeTab.classList.add('active')
 }
 
@@ -204,7 +204,7 @@ function follow(id, btn){
 
     refreshFeed()
     refreshFriends()
-    refreshUsers()   // ADD THIS
+    refreshUsers() 
   })
 }
 
@@ -215,7 +215,7 @@ function unfollow(id){
     body: JSON.stringify({ user_id: parseInt(id) })
   }).then(()=>{
     refreshFriends()
-    refreshUsers()   // ADD THIS
+    refreshUsers()
   })
 }
 
@@ -232,7 +232,7 @@ function toggleLike(id){
   }).then(()=>{
     btn.classList.toggle('liked')
 
-    refreshFeed()   // ADD THIS
+    refreshFeed()
   })
 }
 
