@@ -28,84 +28,94 @@ def run_query(query, params=None):
 # ---- FEED (Collaborative Filtering) ----
 def get_feed():
     query = """
-    MATCH (me:User {user_id:$uid})
+MATCH (me:User {user_id:$uid})
 
-    // ---- similar users scoring ----
-    OPTIONAL MATCH (me)-[:LIKES]->(p)<-[:LIKES]-(u:User)
-    WITH me, u, count(p) AS commonLikes
+/* =========================
+   SAFE CF PIPELINE
+========================= */
+OPTIONAL MATCH (me)-[:LIKES]->(p)<-[:LIKES]-(u:User)
+WITH me, collect(DISTINCT u) AS simUsers
 
-    OPTIONAL MATCH (me)-[:FOLLOWS]->(f)-[:FOLLOWS]->(u)
-    WITH me, u, commonLikes, count(f) AS mutualFollows
+OPTIONAL MATCH (me)-[:FOLLOWS]->(f)-[:FOLLOWS]->(u2)
+WITH me, simUsers, collect(DISTINCT u2) AS fofUsers
 
-    WITH me, u,
-        (commonLikes * 3 + mutualFollows * 2 +
-        CASE WHEN me.country = u.country THEN 2 ELSE 0 END +
-        CASE WHEN me.favorite = u.favorite THEN 2 ELSE 0 END) AS simScore
+WITH me, apoc.coll.toSet(simUsers + fofUsers) AS simUsers
 
-    WHERE u IS NOT NULL AND u.user_id <> me.user_id
+UNWIND CASE 
+  WHEN size(simUsers) = 0 THEN [NULL] 
+  ELSE simUsers 
+END AS u
 
-    // ---- posts from similar users ----
-    MATCH (u)-[:LIKES]->(post:Post)
-    MATCH (author:User)-[:CREATED]->(post)
+WITH me, u
+WHERE u IS NULL OR u.user_id <> me.user_id
 
-    // keep everything before aggregation
-    WITH me, post, u, simScore, author   // ADD author here
+OPTIONAL MATCH (u)-[:LIKES]->(post:Post)
+OPTIONAL MATCH (author:User)-[:CREATED]->(post)
 
-    // detect like
-    OPTIONAL MATCH (me)-[l:LIKES]->(post)
+OPTIONAL MATCH (me)-[l:LIKES]->(post)
 
-    // aggregate correctly
-    WITH post,
-        sum(simScore) AS totalScore,
-        count(DISTINCT u) AS support,
-        (count(l) > 0) AS liked,
-        author   // KEEP author
+WITH me, post, u, l, author
 
-    // ---- FINAL RANKING ----
-    WITH post,
-        (totalScore + support * 2) AS finalScore,
-        liked,
-        author   // KEEP author
+WITH me,
+     collect({
+       post: post,
+       score:
+         (CASE WHEN post IS NOT NULL THEN 5 ELSE 0 END) +
+         (CASE WHEN u IS NOT NULL AND u.country = me.country THEN 2 ELSE 0 END) +
+         (CASE WHEN u IS NOT NULL AND u.favorite = me.favorite THEN 2 ELSE 0 END),
+       liked: CASE WHEN l IS NULL THEN false ELSE true END,
+       author: author.user_name
+     }) AS cfPosts
 
-    // ---- collect all posts ----
-    WITH collect({
-    post: post,
-    score: finalScore,
-    liked: liked,
-    author: author.user_name   // include author
-    }) AS allPosts
+/* =========================
+   CLEAN NULLS (IMPORTANT)
+========================= */
+WITH me,
+     [x IN cfPosts WHERE x.post IS NOT NULL] AS cfPosts
 
-    // ---- split ----
-    WITH
-    [x IN allPosts WHERE x.liked = false] AS normalPosts,
-    [x IN allPosts WHERE x.liked = true] AS likedPosts
+/* =========================
+   FALLBACK (ALWAYS RUNS)
+========================= */
+CALL {
+  WITH me
+  MATCH (p:Post)
+  MATCH (a:User)-[:CREATED]->(p)
 
-    // ---- shuffle liked posts (requires APOC) ----
-    WITH normalPosts,
-        apoc.coll.shuffle(likedPosts) AS likedPosts,
-        toInteger(rand() * 4) AS k   // 0 → 3
+  OPTIONAL MATCH (me)-[l:LIKES]->(p)
 
-    // ---- pick small subset ----
-    WITH normalPosts,
-        likedPosts[0..k] AS sampledLiked
+  RETURN collect({
+    post: p,
+    score:
+      (CASE WHEN a.country = me.country THEN 2 ELSE 0 END) +
+      (CASE WHEN p.topic = me.favorite THEN 2 ELSE 0 END),
+    liked: (l IS NOT NULL),
+    author: a.user_name
+  })[0..15] AS fallbackPosts
+}
 
-    // ---- combine ----
-    WITH normalPosts + sampledLiked AS combined
+/* =========================
+   GUARANTEED MERGE
+========================= */
+WITH
+CASE
+  WHEN size(cfPosts) = 0 THEN fallbackPosts
+  ELSE cfPosts + fallbackPosts[0..5]
+END AS allPosts
 
-    UNWIND combined AS x
+UNWIND allPosts AS x
 
-    RETURN
-    x.post.post_id AS id,
-    x.post.title AS title,
-    x.post.content AS content,
-    x.post.topic AS topic,
-    x.post.created_at AS created_at,
-    x.author AS author,        // ADD THIS
-    x.liked AS liked,
-    x.score AS score
+RETURN
+  x.post.post_id AS id,
+  x.post.title AS title,
+  x.post.content AS content,
+  x.post.topic AS topic,
+  x.post.created_at AS created_at,
+  x.author AS author,
+  x.liked AS liked,
+  x.score AS score
 
-    ORDER BY score DESC
-    LIMIT 10
+ORDER BY x.score DESC
+LIMIT 10
     """
     return run_query(query, {"uid": ROOT_USER_ID})
 
