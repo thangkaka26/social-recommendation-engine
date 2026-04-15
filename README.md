@@ -10,7 +10,7 @@ src/
 ├── templates/
 │   ├── friends.html
 │   └── home.html
-└── app.py
+├── app.py
 └── requirements.txt
 ```
 
