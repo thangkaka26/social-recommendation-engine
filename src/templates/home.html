@@ -1,531 +1,994 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Social App</title>
+<title>SocialConnect - Discover & Connect</title>
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-body {
-  font-family: Arial;
+* {
   margin: 0;
-  background: #f0f2f5;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-/* NAV */
+body {
+  font-family: 'Inter', sans-serif;
+  background: #1877F2;
+  min-height: 100vh;
+}
+
+/* NAVIGATION */
 .nav {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  padding: 0 24px;
   display: flex;
-  background: #1877f2;
-  color: white;
-  padding: 10px;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav button {
+  background: none;
+  border: none;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f1e33;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav button:hover {
+  color: gray;
+  transform: translateY(-2px);
+}
+
+.nav button::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 3px;
+  background: gray;
+  transition: width 0.3s ease;
+}
+
+.nav button:hover::after {
+  width: 80%;
 }
 
 /* APP CONTAINER */
 #app {
-  position: relative;
-  width: 100%;
-  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
 }
 
 /* TABS */
 .tab {
   display: none;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
+  animation: fadeIn 0.5s ease;
 }
 
-/* ONLY ACTIVE TAB SHOWS */
 .tab.active {
   display: block;
 }
 
-/* HOME layout ONLY when active */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* HOME LAYOUT */
 #home.tab.active {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 20px;
-  padding: 20px;
+  gap: 24px;
 }
 
-/* FRIENDS layout */
+/* FEED STYLES */
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 0 8px;
+}
+
+.feed-header h2 {
+  font-size: 28px;
+  font-weight: 700;
+  background: white;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.explain-btn {
+  background: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  color: #1877F2;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.explain-btn:hover {
+  background: #1255ad;
+  color: white;
+  transform: scale(1.05);
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  animation: slideIn 0.5s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.post-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f1e33;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.post-title i {
+  color: #1877F2; /*koral*/
+}
+
+.post-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f7fafc;
+  padding: 6px 12px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.post-author i {
+  font-size: 14px;
+  color: #1877F2;
+}
+
+.post-topic {
+  display: inline-block;
+  background: #1877F2;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.post-content {
+  color: #4a5568;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.post-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: #a0aec0;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.like-btn {
+  background: #f7fafc;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.like-btn i {
+  font-size: 16px;
+}
+
+.like-btn:hover {
+  transform: scale(1.05);
+}
+
+.like-btn.liked {
+  background: #1877F2;
+  color: white;
+}
+
+.like-btn.liked i {
+  color: white;
+}
+
+/* SIDEBAR STYLES */
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 0 8px;
+}
+
+.sidebar-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  background: white;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.user-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #4a5568;
+  margin-bottom: 12px;
+}
+
+.user-info i {
+  width: 20px;
+  color: #1877F2;
+}
+
+.sidebar .card button {
+  width: 100%;
+  background: #1877F2;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 12px;
+}
+
+.sidebar .card button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* FRIENDS PAGE */
 #friends {
   padding: 20px;
 }
 
-/* FEED + SIDEBAR */
-.feed {
+#friends h2 {
+  font-size: 32px;
+  font-weight: 700;
+  background: white;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.friends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+#friends .card {
+  position: relative;
+  overflow: hidden;
+}
+
+#friends .card button {
+  background: #1877F2;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
   width: 100%;
 }
 
-.sidebar {
-  width: 100%;
-}
-
-/* CARDS */
-.card {
-  border: 1px solid #ccc;
-  padding: 12px;
-  margin-bottom: 12px;
-  border-radius: 10px;
-  background: #fff;
+#friends .card button:hover {
+  background: lightcoral;
+  transform: translateY(-2px);
 }
 
 /* MODAL */
 .modal {
   display: none;
   position: fixed;
-
-  top: 5%;        
-  left: 12.5%;      
-
-  width: 80%;     
+  top: 5%;
+  left: 10%;
+  width: 80%;
   height: 90%;
-
   background: white;
-  border: 2px solid #333;
-  z-index: 999;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  z-index: 1000;
+  overflow: hidden;
 }
 
 .modal.active {
-  display: flex;      
+  display: flex;
   flex-direction: column;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .modal-header {
-  padding: 10px;
-  border-bottom: 1px solid #ccc;
-  background: #f5f5f5;
-  flex: 0 0 auto; 
+  padding: 16px 24px;
+  background: #1877F2;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .modal-header button {
-  padding: 6px 12px;
+  background: white;
   border: none;
-  background: #1877f2;
-  color: white;
-  border-radius: 5px;
+  padding: 8px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  color: #1877F2;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.modal-header button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 #viz {
-  flex: 1;             
+  flex: 1;
   width: 100%;
-  overflow: hidden;   
-  position: relative;
+  background: #f7fafc;
 }
 
-#viz canvas {
-  image-rendering: crisp-edges;   
+/* SCROLLBAR */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.like-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  background: #e4e6eb; 
-  color: black;
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
 }
 
-/* liked state */
-.like-btn.liked {
-  background: #1877f2; 
-  color: white;
+::-webkit-scrollbar-thumb {
+  background: #2d3748;
+  border-radius: 10px;
 }
 
-/* hover */
-.like-btn:hover {
-  opacity: 0.85;
+::-webkit-scrollbar-thumb:hover {
+  background: #1f1e33;
 }
 
-.explain-btn {
-  margin-left: 10px;
-  padding: 4px 8px;
-  font-size: 12px;
-  border: none;
-  border-radius: 5px;
-  background: #e4e6eb;
-  cursor: pointer;
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  #home.tab.active {
+    grid-template-columns: 1fr;
+  }
+  
+  .nav button {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  
+  .modal {
+    left: 5%;
+    width: 90%;
+  }
+  
+  .feed-header h2,
+  .sidebar-header h2 {
+    font-size: 20px;
+  }
 }
 
-.explain-btn:hover {
-  background: #d8dadf;
+/* LOADING STATE */
+.loading {
+  text-align: center;
+  padding: 40px;
 }
 
-/* POST */
-.post-title {
-  font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 6px;
+.loading i {
+  font-size: 40px;
+  color: #1877F2;
+  animation: spin 1s linear infinite;
 }
 
-.post-topic {
-  font-size: 13px;
-  color: #1877f2;
-  margin-bottom: 6px;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.post-content {
-  margin-bottom: 6px;
-  color: #333;
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #a0aec0;
 }
 
-.post-meta {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 8px;
+.empty-state i {
+  font-size: 64px;
+  margin-bottom: 20px;
 }
 
-/* USER / FRIEND */
-.user-name {
-  font-size: 18px;  
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-
-.user-info {
-  font-size: 13px;
-  color: #444;
-  margin-bottom: 3px;
-}
-
-.post-author {
-  font-size: 13px;
-  color: #555;
-  margin-bottom: 4px;
+.empty-state p {
+  font-size: 18px;
 }
 </style>
 
 <script>
+let currentNetwork = null;
 
-function showTab(tab){
+function showTab(tab) {
   document.querySelectorAll('.tab').forEach(t => {
-    t.style.display = 'none'     
-    t.classList.remove('active')
-  })
+    t.style.display = 'none';
+    t.classList.remove('active');
+  });
 
-  const activeTab = document.getElementById(tab)
-  activeTab.style.display = (tab === 'home') ? 'grid' : 'block' 
-  activeTab.classList.add('active')
+  const activeTab = document.getElementById(tab);
+  if (tab === 'home') {
+    activeTab.style.display = 'grid';
+  } else {
+    activeTab.style.display = 'block';
+  }
+  activeTab.classList.add('active');
 }
 
-function closeModal(){
-  document.getElementById('modal').classList.remove('active')
+function closeModal() {
+  const modal = document.getElementById('modal');
+  const overlay = document.querySelector('.modal-overlay');
+  
+  modal.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
+  
+  // Destroy network to clean up
+  if (currentNetwork) {
+    currentNetwork.destroy();
+    currentNetwork = null;
+  }
+  
+  // Clear and reset container
+  const container = document.getElementById('viz');
+  container.innerHTML = '';
+  container.style.height = '';
 }
 
-function refreshUsers(){
+function showNotification(message, type) {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${message}`;
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideOutRight 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+function refreshUsers() {
   fetch('/')
     .then(res => res.text())
     .then(html => {
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(html, 'text/html')
-
-      const newUsers = doc.querySelector('#users')
-      const currentUsers = document.querySelector('#users')
-
-      currentUsers.innerHTML = newUsers.innerHTML
-    })
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newUsers = doc.querySelector('#users');
+      const currentUsers = document.querySelector('#users');
+      if (newUsers && currentUsers) {
+        currentUsers.innerHTML = newUsers.innerHTML;
+      }
+    });
 }
 
-function follow(id, btn){
-  fetch('/follow',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+function follow(id, btn) {
+  fetch('/follow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: parseInt(id) })
-  }).then(()=>{
-    btn.closest('.card').remove()
-
-    refreshFeed()
-    refreshFriends()
-    refreshUsers()  
-  })
+  }).then(() => {
+    btn.closest('.card').remove();
+    refreshFeed();
+    refreshFriends();
+    refreshUsers();
+    showNotification('Successfully followed user!', 'success');
+  });
 }
 
-function unfollow(id){
-  fetch('/unfollow',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+function unfollow(id) {
+  fetch('/unfollow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: parseInt(id) })
-  }).then(()=>{
-    refreshFriends()
-    refreshUsers() 
-  })
+  }).then(() => {
+    refreshFriends();
+    refreshUsers();
+    showNotification('Unfollowed user', 'info');
+  });
 }
 
-function toggleLike(id){
-  const btn = document.getElementById(`like-btn-${id}`)
-  const isLiked = btn.classList.contains('liked')
+function toggleLike(id) {
+  const btn = document.getElementById(`like-btn-${id}`);
+  const isLiked = btn.classList.contains('liked');
+  const url = isLiked ? '/unlike' : '/like';
 
-  const url = isLiked ? '/unlike' : '/like'
-
-  fetch(url,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ post_id: parseInt(id) })
-  }).then(()=>{
-    btn.classList.toggle('liked')
-
-    refreshFeed() 
-  })
+  }).then(() => {
+    refreshFeed();
+    showNotification(isLiked ? 'Removed like' : 'Liked post!', 'success');
+  });
 }
 
+function initGraph(container, nodes, edges, options) {
+  // Destroy existing network if any
+  if (currentNetwork) {
+    currentNetwork.destroy();
+    currentNetwork = null;
+  }
+  
+  // Clear container
+  container.innerHTML = '';
+  
+  // Set container height explicitly
+  container.style.height = '100%';
+  container.style.width = '100%';
+  
+  // Create new network
+  currentNetwork = new vis.Network(container, { nodes, edges }, options);
+  
+  return currentNetwork;
+}
 
-function explainFeed(){
-  document.getElementById('modal').classList.add('active')
-
+function explainFeed() {
+  const modal = document.getElementById('modal');
+  const container = document.getElementById('viz');
+  
+  // Reset container
+  container.innerHTML = '';
+  modal.classList.add('active');
+  
+  // Add overlay if not exists
+  if (!document.querySelector('.modal-overlay')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = closeModal;
+    document.body.appendChild(overlay);
+  }
+  document.querySelector('.modal-overlay').classList.add('active');
+  
+  // Show loading state
+  container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner"></i></div>';
+  
   fetch('/graph/feed')
     .then(res => res.json())
     .then(data => {
-    const container = document.getElementById('viz')
-
-    container.innerHTML = ""
-    container.style.height = "100%" 
-    container.style.width = "100%"   
-
-      const nodes = new vis.DataSet(data.nodes)
-      const edges = new vis.DataSet(data.relationships)
-
-      const network = new vis.Network(container, { nodes, edges }, {
+      if (!data.nodes || data.nodes.length === 0) {
+        container.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #a0aec0;"><i class="fas fa-chart-line fa-3x"></i><p style="margin-top: 10px;">No graph data available</p></div>';
+        return;
+      }
+      
+      const nodes = new vis.DataSet(data.nodes);
+      const edges = new vis.DataSet(data.relationships);
+      
+      const options = {
         autoResize: true,
-
+        width: '100%',
+        height: '100%',
         nodes: {
           shape: 'dot',
-          size: 16,
+          size: 25,
           font: {
             size: 14,
-            color: '#222',
-            face: 'Segoe UI'  
-          }
+            color: '#2d3748',
+            face: 'Inter'
+          },
+          borderWidth: 2,
+          shadow: true
         },
         edges: {
-          arrows: { to: { enabled: true, scaleFactor: 0.5 } },
-          smooth: true
-        },
-        layout: {
-          improvedLayout: true
+          arrows: {
+            to: {
+              enabled: true,
+              scaleFactor: 0.5
+            }
+          },
+          smooth: {
+            type: 'dynamic',
+            roundness: 0.5
+          },
+          color: {
+            color: '#b5b5b5',
+            highlight: '#667eea'
+          },
+          width: 2
         },
         physics: {
           enabled: true,
           solver: "forceAtlas2Based",
           stabilization: {
-            iterations: 200,
+            iterations: 100,
             fit: true
           },
-          barnesHut: {
-            gravitationalConstant: -2000,
-            centralGravity: 0.2,
+          forceAtlas2Based: {
+            gravitationalConstant: -50,
+            centralGravity: 0.01,
             springLength: 100,
-            springConstant: 0.04
+            springConstant: 0.08,
+            damping: 0.4,
+            avoidOverlap: 0.5
           }
         },
         interaction: {
           zoomView: true,
-          dragView: true
+          dragView: true,
+          hover: true,
+          tooltipDelay: 100
         },
-        configure: {
-          enabled: false
+        layout: {
+          improvedLayout: true,
+          randomSeed: 2
         }
-      })
-
-      network.once("stabilizationIterationsDone", function () {
-        network.fit({ animation: true })
-      })
-
-      setTimeout(() => {
-        network.redraw()
-        network.fit()
-      }, 100)
+      };
+      
+      const network = initGraph(container, nodes, edges, options);
+      
+      network.once("stabilizationIterationsDone", function() {
+        network.fit({ animation: true, duration: 500 });
+      });
+      
+      // Handle window resize
+      window.addEventListener('resize', function() {
+        if (currentNetwork && modal.classList.contains('active')) {
+          setTimeout(() => {
+            currentNetwork.fit();
+          }, 100);
+        }
+      });
     })
+    .catch(error => {
+      console.error('Error fetching graph data:', error);
+      container.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #e53e3e;"><i class="fas fa-exclamation-triangle fa-3x"></i><p style="margin-top: 10px;">Error loading graph data</p></div>';
+    });
 }
 
-
-function refreshFeed(){
-  fetch('/')
-    .then(res => res.text())
-    .then(html => {
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(html, 'text/html')
-
-      const newFeed = doc.querySelector('.feed')
-      setTimeout(()=>{
-        document.querySelector('.feed').innerHTML = newFeed.innerHTML
-      }, 50)
-    })
-}
-
-function refreshFriends(){
-  fetch('/')
-    .then(res => res.text())
-    .then(html => {
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(html, 'text/html')
-
-      const newFriends = doc.querySelector('#friends')
-      document.querySelector('#friends').innerHTML = newFriends.innerHTML
-    })
-}
-
-
-function explainUsers(){
-  document.getElementById('modal').classList.add('active')
-
+function explainUsers() {
+  const modal = document.getElementById('modal');
+  const container = document.getElementById('viz');
+  
+  // Reset container
+  container.innerHTML = '';
+  modal.classList.add('active');
+  
+  // Add overlay if not exists
+  if (!document.querySelector('.modal-overlay')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = closeModal;
+    document.body.appendChild(overlay);
+  }
+  document.querySelector('.modal-overlay').classList.add('active');
+  
+  // Show loading state
+  container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner"></i></div>';
+  
   fetch('/graph/users')
     .then(res => res.json())
     .then(data => {
-    const container = document.getElementById('viz')
-
-    container.innerHTML = ""
-    container.style.height = "100%"  
-    container.style.width = "100%"   
-
-      const nodes = new vis.DataSet(data.nodes)
-      const edges = new vis.DataSet(data.relationships)
-
-      const network = new vis.Network(container, { nodes, edges }, {
+      if (!data.nodes || data.nodes.length === 0) {
+        container.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #a0aec0;"><i class="fas fa-users-slash fa-3x"></i><p style="margin-top: 10px;">No user graph data available</p></div>';
+        return;
+      }
+      
+      const nodes = new vis.DataSet(data.nodes);
+      const edges = new vis.DataSet(data.relationships);
+      
+      const options = {
         autoResize: true,
-
+        width: '100%',
+        height: '100%',
         nodes: {
           shape: 'dot',
-          size: 16,
+          size: 25,
           font: {
             size: 14,
-            color: '#222',
-            face: 'Segoe UI'  
-          }
+            color: '#2d3748',
+            face: 'Inter'
+          },
+          borderWidth: 2,
+          shadow: true
         },
         edges: {
-          arrows: { to: { enabled: true, scaleFactor: 0.5 } },
-          smooth: true
-        },
-        layout: {
-          improvedLayout: true
+          arrows: {
+            to: {
+              enabled: true,
+              scaleFactor: 0.5
+            }
+          },
+          smooth: {
+            type: 'dynamic',
+            roundness: 0.5
+          },
+          color: {
+            color: '#b5b5b5',
+            highlight: '#667eea'
+          },
+          width: 2
         },
         physics: {
           enabled: true,
           solver: "forceAtlas2Based",
           stabilization: {
-            iterations: 200,
+            iterations: 100,
             fit: true
           },
-          barnesHut: {
-            gravitationalConstant: -2000,
-            centralGravity: 0.2,
+          forceAtlas2Based: {
+            gravitationalConstant: -50,
+            centralGravity: 0.01,
             springLength: 100,
-            springConstant: 0.04
+            springConstant: 0.08,
+            damping: 0.4,
+            avoidOverlap: 0.5
           }
         },
         interaction: {
           zoomView: true,
-          dragView: true
+          dragView: true,
+          hover: true,
+          tooltipDelay: 100
         },
-        configure: {
-          enabled: false
+        layout: {
+          improvedLayout: true,
+          randomSeed: 2
         }
-      })
-
-      network.once("stabilizationIterationsDone", function () {
-        network.fit({ animation: true })
-      })
-
-      setTimeout(() => {
-        network.redraw()
-        network.fit()
-      }, 100)
+      };
+      
+      const network = initGraph(container, nodes, edges, options);
+      
+      network.once("stabilizationIterationsDone", function() {
+        network.fit({ animation: true, duration: 500 });
+      });
+      
+      // Handle window resize
+      window.addEventListener('resize', function() {
+        if (currentNetwork && modal.classList.contains('active')) {
+          setTimeout(() => {
+            currentNetwork.fit();
+          }, 100);
+        }
+      });
     })
+    .catch(error => {
+      console.error('Error fetching graph data:', error);
+      container.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #e53e3e;"><i class="fas fa-exclamation-triangle fa-3x"></i><p style="margin-top: 10px;">Error loading graph data</p></div>';
+    });
 }
 
+function refreshFeed() {
+  fetch('/')
+    .then(res => res.text())
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newFeed = doc.querySelector('.feed');
+      setTimeout(() => {
+        const feedElement = document.querySelector('.feed');
+        if (newFeed && feedElement) {
+          feedElement.innerHTML = newFeed.innerHTML;
+        }
+      }, 50);
+    });
+}
 
+function refreshFriends() {
+  fetch('/')
+    .then(res => res.text())
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newFriends = doc.querySelector('#friends');
+      const friendsElement = document.querySelector('#friends');
+      if (newFriends && friendsElement) {
+        friendsElement.innerHTML = newFriends.innerHTML;
+      }
+    });
+}
 </script>
 </head>
 <body>
 
 <div class="nav">
-<button onclick="showTab('home')">Home</button>
-<button onclick="showTab('friends')">Friends</button>
+  <button onclick="showTab('home')"><i class="fas fa-home"></i> Home</button>
+  <button onclick="showTab('friends')"><i class="fas fa-users"></i> Friends</button>
 </div>
 
 <div id="app">
 
 <div id="home" class="tab active">
+  <div class="feed">
+    <div class="feed-header">
+      <h2><i class="fas fa-newspaper"></i> News Feed</h2>
+      <button onclick="explainFeed()" class="explain-btn">
+        <i class="fas fa-question-circle"></i> Why?
+      </button>
+    </div>
+    {% for p in posts %}
+    <div class="card">
+      <div class="post-title">
+        <i class="fas fa-heading"></i>
+        <b>{{p.title}}</b>
+      </div>
+      <div class="post-author">
+        <i class="fas fa-user-circle"></i>
+        <b>Author:</b> {{p.author}}
+      </div>
+      <div class="post-topic">
+        <i class="fas fa-tag"></i> {{p.topic}}
+      </div>
+      <div class="post-content">
+        <i class="fas fa-align-left"></i> {{p.content}}
+      </div>
+      <div class="post-meta">
+        <span><i class="far fa-calendar-alt"></i> {{p.created_at}}</span>
+      </div>
+      <button 
+        id="like-btn-{{p.id}}"
+        onclick="toggleLike('{{p.id}}')"
+        class="like-btn {{ 'liked' if p.liked else '' }}"
+      >
+        <i class="fas {{ 'fa-heart' if p.liked else 'fa-heart-broken' }}"></i>
+        Like
+      </button>
+    </div>
+    {% endfor %}
+  </div>
 
-<div class="feed">
-<h2>
-  News Feed
-  <button onclick="explainFeed()" class="explain-btn">Why?</button>
-</h2>
-{% for p in posts %}
-<div class="card">
-
-<div class="post-title"><b>{{p.title}}</b></div>
-
-<div class="post-author"><b>Author:</b> {{p.author}}</div>
-
-<div class="post-topic"><b>Topic:</b> {{p.topic}}</div>
-
-<div class="post-content">{{p.content}}</div>
-
-<div class="post-meta">
-  <span><b>Created at:</b> {{p.created_at}}</span>
-</div>
-
-<button 
-  id="like-btn-{{p.id}}"
-  onclick="toggleLike('{{p.id}}')"
-  class="like-btn {{ 'liked' if p.liked else '' }}"
->
-  Like
-</button>
-
-</div>
-{% endfor %}
-</div>
-
-<div class="sidebar" id="users">
-<h2>
-  People you may know
-  <button onclick="explainUsers()" class="explain-btn">Why?</button>
-</h2>
-{% for u in users %}
-<div class="card">
-
-<div class="user-name">{{u.name}}</div>
-
-<div class="user-info"><b>Country:</b> {{u.country}}</div>
-<div class="user-info"><b>Favorite:</b> {{u.favorite}}</div>
-
-<button onclick="follow('{{u.id}}', this)">Follow</button>
-
-</div>
-{% endfor %}
-</div>
-
+  <div class="sidebar" id="users">
+    <div class="sidebar-header">
+      <h2><i class="fas fa-user-friends"></i> People you may know</h2>
+      <button onclick="explainUsers()" class="explain-btn">
+        <i class="fas fa-question-circle"></i> Why?
+      </button>
+    </div>
+    {% for u in users %}
+    <div class="card">
+      <div class="user-name">
+        <i class="fas fa-user-circle"></i>
+        {{u.name}}
+      </div>
+      <div class="user-info">
+        <i class="fas fa-map-marker-alt"></i>
+        <b>Country:</b> {{u.country}}
+      </div>
+      <div class="user-info">
+        <i class="fas fa-star"></i>
+        <b>Favorite:</b> {{u.favorite}}
+      </div>
+      <button onclick="follow('{{u.id}}', this)">
+        <i class="fas fa-user-plus"></i> Follow
+      </button>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 
 <div id="friends" class="tab">
-<h2>Friends ({{friends|length}})</h2>
-{% for f in friends %}
-<div class="card">
-
-<div class="user-name">{{f.name}}</div>
-
-<div class="user-info"><b>Country:</b> {{f.country}}</div>
-<div class="user-info"><b>Favorite:</b> {{f.favorite}}</div>
-
-<button onclick="unfollow('{{f.id}}')">Unfollow</button>
-
+  <h2><i class="fas fa-users"></i> Friends ({{friends|length}})</h2>
+  <div class="friends-grid">
+    {% for f in friends %}
+    <div class="card">
+      <div class="user-name">
+        <i class="fas fa-user-circle"></i>
+        {{f.name}}
+      </div>
+      <div class="user-info">
+        <i class="fas fa-map-marker-alt"></i>
+        <b>Country:</b> {{f.country}}
+      </div>
+      <div class="user-info">
+        <i class="fas fa-star"></i>
+        <b>Favorite:</b> {{f.favorite}}
+      </div>
+      <button onclick="unfollow('{{f.id}}')">
+        <i class="fas fa-user-minus"></i> Unfollow
+      </button>
+    </div>
+    {% endfor %}
+  </div>
 </div>
-{% endfor %}
-</div>
+
 </div>
 
 <div id="modal" class="modal">
-
   <div class="modal-header">
-    <button onclick="closeModal()">Close</button>
+    <button onclick="closeModal()"><i class="fas fa-times"></i> Close</button>
   </div>
-
   <div id="viz"></div>
-
 </div>
 
 </body>
