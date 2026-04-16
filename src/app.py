@@ -53,16 +53,20 @@ OPTIONAL MATCH (u)-[:LIKES]->(post:Post)
 OPTIONAL MATCH (author:User)-[:CREATED]->(post)
 
 OPTIONAL MATCH (me)-[l:LIKES]->(post)
+OPTIONAL MATCH (me)-[frel:FOLLOWS]->(author)
 
-WITH me, post, u, l, author
+WITH me, post, u, l, author,
+     (frel IS NOT NULL) AS isFriend
 
 WITH me,
      collect({
        post: post,
-       score:
-         (CASE WHEN post IS NOT NULL THEN 5 ELSE 0 END) +
-         (CASE WHEN u IS NOT NULL AND u.country = me.country THEN 2 ELSE 0 END) +
-         (CASE WHEN u IS NOT NULL AND u.favorite = me.favorite THEN 2 ELSE 0 END),
+        score:
+        (CASE WHEN isFriend THEN 15 ELSE 0 END) +
+        (CASE WHEN post IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN u IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN u IS NOT NULL AND u.country = me.country THEN 3 ELSE 0 END) +
+        (CASE WHEN post IS NOT NULL AND post.topic = me.favorite THEN 5 ELSE 0 END),
        liked: CASE WHEN l IS NULL THEN false ELSE true END,
        author: author.user_name
      }) AS cfPosts
@@ -72,6 +76,22 @@ WITH me,
 ========================= */
 WITH me,
      [x IN cfPosts WHERE x.post IS NOT NULL] AS cfPosts
+
+WITH me,
+     [x IN cfPosts WHERE x.liked = false] AS normalPosts,
+     [x IN cfPosts WHERE x.liked = true] AS likedPosts
+
+WITH me,
+     normalPosts,
+     apoc.coll.shuffle(likedPosts) AS likedPosts,
+     toInteger(rand() * (6 - 1 + 1)) + 1 AS k
+
+WITH me,
+     normalPosts,
+     likedPosts[0..k] AS sampledLiked
+
+WITH me,
+     normalPosts + sampledLiked AS cfPosts
 
 /* =========================
    FALLBACK (ALWAYS RUNS)
@@ -86,8 +106,8 @@ CALL {
   RETURN collect({
     post: p,
     score:
-      (CASE WHEN a.country = me.country THEN 2 ELSE 0 END) +
-      (CASE WHEN p.topic = me.favorite THEN 2 ELSE 0 END),
+      (CASE WHEN a.country = me.country THEN 3 ELSE 0 END) +
+      (CASE WHEN p.topic = me.favorite THEN 5 ELSE 0 END),
     liked: (l IS NOT NULL),
     author: a.user_name
   })[0..15] AS fallbackPosts
@@ -99,7 +119,7 @@ CALL {
 WITH
 CASE
   WHEN size(cfPosts) = 0 THEN fallbackPosts
-  ELSE cfPosts + fallbackPosts[0..5]
+  ELSE cfPosts // + fallbackPosts[0..2]
 END AS allPosts
 
 UNWIND allPosts AS x
@@ -115,7 +135,7 @@ RETURN
   x.score AS score
 
 ORDER BY x.score DESC
-LIMIT 10
+LIMIT 15
     """
     return run_query(query, {"uid": ROOT_USER_ID})
 
@@ -143,10 +163,10 @@ CALL {
        likeScore
 
   WITH me, u,
-       (fofScore * 4 +
-        likeScore * 3 +
-        CASE WHEN u IS NOT NULL AND u.country = me.country THEN 2 ELSE 0 END +
-        CASE WHEN u IS NOT NULL AND u.favorite = me.favorite THEN 2 ELSE 0 END
+       (fofScore * 3 +
+        likeScore * 2 +
+        CASE WHEN u IS NOT NULL AND u.country = me.country THEN 3 ELSE 0 END +
+        CASE WHEN u IS NOT NULL AND u.favorite = me.favorite THEN 5 ELSE 0 END
        ) AS score
 
   WHERE u IS NOT NULL
@@ -160,9 +180,7 @@ CALL {
     u.favorite AS favorite,
     score
 
-
   UNION
-
 
   // ---------- PART 2: FALLBACK ----------
   MATCH (me:User {user_id:$uid})
@@ -176,13 +194,14 @@ CALL {
     u.user_name AS name,
     u.country AS country,
     u.favorite AS favorite,
-    0 AS score   // MUST MATCH PART 1
+    0 AS score 
+  LIMIT 4
 }
 
 WITH id, name, country, favorite, max(score) AS score
 
 RETURN id, name, country, favorite
-ORDER BY score DESC, rand()
+ORDER BY score DESC
 LIMIT 10
     """
     return run_query(query, {"uid": ROOT_USER_ID})
