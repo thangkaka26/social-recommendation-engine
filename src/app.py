@@ -34,12 +34,11 @@ MATCH (me:User {user_id:$uid})
    SAFE CF PIPELINE
 ========================= */
 OPTIONAL MATCH (me)-[:LIKES]->(p)<-[:LIKES]-(u:User)
-WITH me, collect(DISTINCT u) AS simUsers
-
 OPTIONAL MATCH (me)-[:FOLLOWS]->(f)-[:FOLLOWS]->(u2)
-WITH me, simUsers, collect(DISTINCT u2) AS fofUsers
 
-WITH me, apoc.coll.toSet(simUsers + fofUsers) AS simUsers
+WITH me, collect(DISTINCT u) AS sameLikes, collect(DISTINCT f) AS friends, collect(DISTINCT u2) AS fofUsers
+
+WITH me, apoc.coll.toSet(sameLikes + friends + fofUsers) AS simUsers
 
 UNWIND CASE 
   WHEN size(simUsers) = 0 THEN [NULL] 
@@ -49,25 +48,31 @@ END AS u
 WITH me, u
 WHERE u IS NULL OR u.user_id <> me.user_id
 
-OPTIONAL MATCH (u)-[:LIKES]->(post:Post)
-OPTIONAL MATCH (author:User)-[:CREATED]->(post)
 
+MATCH (author:User)-[:CREATED]->(post:Post)
+OPTIONAL MATCH (u)-[:LIKES]->(post)
 OPTIONAL MATCH (me)-[l:LIKES]->(post)
 OPTIONAL MATCH (me)-[frel:FOLLOWS]->(author)
 
 WITH me, post, u, l, author,
      (frel IS NOT NULL) AS isFriend
 
+WITH me, post, author,
+     max(
+       (CASE WHEN isFriend THEN 15 ELSE 5 END) +
+       (CASE WHEN post IS NOT NULL THEN 1 ELSE 0 END) +
+       (CASE WHEN u IS NOT NULL THEN 1 ELSE 0 END) +
+       (CASE WHEN u IS NOT NULL AND u.country = me.country THEN 3 ELSE 0 END) +
+       (CASE WHEN post IS NOT NULL AND post.topic = me.favorite THEN 5 ELSE 0 END)
+     ) AS score,
+     max(CASE WHEN l IS NULL THEN false ELSE true END) AS liked
+
 WITH me,
      collect({
+       post_id: post.post_id,
        post: post,
-        score:
-        (CASE WHEN isFriend THEN 15 ELSE 0 END) +
-        (CASE WHEN post IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN u IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN u IS NOT NULL AND u.country = me.country THEN 3 ELSE 0 END) +
-        (CASE WHEN post IS NOT NULL AND post.topic = me.favorite THEN 5 ELSE 0 END),
-       liked: CASE WHEN l IS NULL THEN false ELSE true END,
+       score: score,
+       liked: liked,
        author: author.user_name
      }) AS cfPosts
 
@@ -84,14 +89,14 @@ WITH me,
 WITH me,
      normalPosts,
      apoc.coll.shuffle(likedPosts) AS likedPosts,
-     toInteger(rand() * (6 - 1 + 1)) + 1 AS k
+     toInteger(rand() * (5 - 1 + 1)) + 1 AS k
 
 WITH me,
      normalPosts,
      likedPosts[0..k] AS sampledLiked
 
 WITH me,
-     normalPosts + sampledLiked AS cfPosts
+     apoc.coll.toSet(normalPosts + sampledLiked) AS cfPosts
 
 /* =========================
    FALLBACK (ALWAYS RUNS)
@@ -104,13 +109,14 @@ CALL {
   OPTIONAL MATCH (me)-[l:LIKES]->(p)
 
   RETURN collect({
+    post_id: p.post_id,
     post: p,
     score:
       (CASE WHEN a.country = me.country THEN 3 ELSE 0 END) +
       (CASE WHEN p.topic = me.favorite THEN 5 ELSE 0 END),
     liked: (l IS NOT NULL),
     author: a.user_name
-  })[0..15] AS fallbackPosts
+  }) AS fallbackPosts
 }
 
 /* =========================
@@ -118,8 +124,8 @@ CALL {
 ========================= */
 WITH
 CASE
-  WHEN size(cfPosts) = 0 THEN fallbackPosts
-  ELSE cfPosts // + fallbackPosts[0..2]
+  WHEN size(cfPosts) = 0 THEN apoc.coll.toSet(fallbackPosts)
+  ELSE apoc.coll.toSet(cfPosts)
 END AS allPosts
 
 UNWIND allPosts AS x
@@ -275,7 +281,7 @@ def explain_user(uid):
     query = """
     MATCH (me:User {user_id:$uid1})-[*1..2]-(u:User {user_id:$uid2})
     RETURN me, u
-    LIMIT 20
+    LIMIT 50
     """
     result = run_query(query, {"uid1": ROOT_USER_ID, "uid2": uid})
     return jsonify([r.data() for r in result])
@@ -292,7 +298,7 @@ def graph_feed():
     OPTIONAL MATCH (f)-[:CREATED]->(p:Post)
 
     RETURN me, f, p
-    LIMIT 30
+    LIMIT 50
     """
 
     result = run_query(query)
@@ -367,7 +373,7 @@ def graph_users():
     OPTIONAL MATCH (f)-[:FOLLOWS]->(fof:User)
 
     RETURN me, f, fof
-    LIMIT 30
+    LIMIT 50
     """
 
     result = run_query(query)
