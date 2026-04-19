@@ -62,7 +62,7 @@ WITH me, post, author,
        (CASE WHEN isFriend THEN 15 ELSE 5 END) +
        (CASE WHEN post IS NOT NULL THEN 1 ELSE 0 END) +
        (CASE WHEN u IS NOT NULL THEN 1 ELSE 0 END) +
-       (CASE WHEN u IS NOT NULL AND u.country = me.country THEN 3 ELSE 0 END) +
+       (CASE WHEN u IS NOT NULL AND u.country = me.country THEN 5 ELSE 0 END) +
        (CASE WHEN post IS NOT NULL AND post.topic = me.favorite THEN 5 ELSE 0 END)
      ) AS score,
      max(CASE WHEN l IS NULL THEN false ELSE true END) AS liked
@@ -82,25 +82,35 @@ WITH me,
 WITH me,
      [x IN cfPosts WHERE x.post IS NOT NULL] AS cfPosts
 
-WITH me,
-     [x IN cfPosts WHERE x.liked = false] AS normalPosts,
-     [x IN cfPosts WHERE x.liked = true] AS likedPosts
+WITH me, cfPosts,
+     [x IN cfPosts WHERE x.liked = true] AS likedPosts,
+     [x IN cfPosts WHERE x.liked = false] AS normalPosts
 
 WITH me,
      normalPosts,
      apoc.coll.shuffle(likedPosts) AS likedPosts,
      toInteger(rand() * (5 - 1 + 1)) + 1 AS k
 
-WITH me,
+WITH me, k,
      normalPosts,
      likedPosts[0..k] AS sampledLiked
 
-WITH me,
-     apoc.coll.toSet(normalPosts + sampledLiked) AS cfPosts
+UNWIND normalPosts AS x
+WITH me, x, sampledLiked, k
+ORDER BY x.score DESC
+WITH me, sampledLiked, k, collect(x) AS rankedPosts
+
+WITH me, sampledLiked, k,
+  rankedPosts[0..8] AS topPosts,
+  apoc.coll.shuffle(rankedPosts[8..(20-k)] + sampledLiked) AS restPosts
+
+WITH me, apoc.coll.toSet(topPosts + restPosts) AS finalPosts
+
 
 /* =========================
    FALLBACK (ALWAYS RUNS)
 ========================= */
+
 CALL {
   WITH me
   MATCH (p:Post)
@@ -112,7 +122,7 @@ CALL {
     post_id: p.post_id,
     post: p,
     score:
-      (CASE WHEN a.country = me.country THEN 3 ELSE 0 END) +
+      (CASE WHEN a.country = me.country THEN 5 ELSE 0 END) +
       (CASE WHEN p.topic = me.favorite THEN 5 ELSE 0 END),
     liked: (l IS NOT NULL),
     author: a.user_name
@@ -124,8 +134,8 @@ CALL {
 ========================= */
 WITH
 CASE
-  WHEN size(cfPosts) = 0 THEN apoc.coll.toSet(fallbackPosts)
-  ELSE apoc.coll.toSet(cfPosts)
+  WHEN size(finalPosts) = 0 THEN apoc.coll.toSet(fallbackPosts)
+  ELSE apoc.coll.toSet(finalPosts)
 END AS allPosts
 
 UNWIND allPosts AS x
@@ -141,7 +151,7 @@ RETURN
   x.score AS score
 
 ORDER BY x.score DESC
-LIMIT 15
+LIMIT 20
     """
     return run_query(query, {"uid": ROOT_USER_ID})
 
