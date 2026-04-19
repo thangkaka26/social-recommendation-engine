@@ -6,6 +6,7 @@ A simple social networking app is powered by Python and Neo4j, with HTML UI.
 src/
 ├── db/
 │   ├── .env
+|   ├── data_model.png
 │   └── neo4j_saved_cypher_queries.csv
 ├── templates/
 │   ├── friends.html
