@@ -1,0 +1,4 @@
+Tuấn Anh: Designing graph data model, manage progress and write report.
+Việt Anh: Generate seed for the database, check consistency & debug.
+Nhật: JS backend, HTML layout and CSS components.
+Thắng: Python backend and collaborative filtering algorithm in Cypher.
